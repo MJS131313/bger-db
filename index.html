@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BGer DB">
+<title>BGer Entscheid-Datenbank</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f4; --bg3: #eeece8;
+    --text: #1a1a1a; --text2: #6b6b6b; --text3: #a0a0a0;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --blue: #185fa5; --blue-bg: #e6f1fb; --blue-border: rgba(24,95,165,0.3);
+    --green: #0f6e56; --green-bg: #e1f5ee; --green-border: rgba(15,110,86,0.3);
+    --warn: #854f0b; --warn-bg: #faeeda; --warn-border: rgba(133,79,11,0.3);
+    --danger: #a32d2d; --danger-bg: #fcebeb; --danger-border: rgba(163,45,45,0.3);
+    --radius: 8px; --radius-lg: 12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e; --bg2: #2c2c2e; --bg3: #3a3a3c;
+      --text: #f2f2f7; --text2: #aeaeb2; --text3: #636366;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --blue: #64b5f6; --blue-bg: rgba(24,95,165,0.2); --blue-border: rgba(100,181,246,0.3);
+      --green: #5dcaa5; --green-bg: rgba(15,110,86,0.2); --green-border: rgba(93,202,165,0.3);
+      --warn: #efae6a; --warn-bg: rgba(133,79,11,0.2); --warn-border: rgba(239,174,106,0.3);
+      --danger: #f09595; --danger-bg: rgba(163,45,45,0.2); --danger-border: rgba(240,149,149,0.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  /* Header */
+  .header { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: calc(var(--safe-top) + 12px) 16px 12px; }
+  .header h1 { font-size: 17px; font-weight: 600; }
+  .header .sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  /* Search bar */
+  .searchbar { display: flex; gap: 8px; margin-top: 10px; }
+  .searchbar input { flex: 1; background: var(--bg2); border: none; border-radius: var(--radius); padding: 8px 12px; font-size: 15px; color: var(--text); outline: none; }
+  .searchbar input::placeholder { color: var(--text3); }
+  .btn-new { background: var(--blue-bg); color: var(--blue); border: 0.5px solid var(--blue-border); border-radius: var(--radius); padding: 8px 14px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  /* Nav tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); margin-top: 10px; }
+  .tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 13px; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 500; }
+  /* Main content */
+  .main { padding: 12px 16px calc(var(--safe-bottom) + 80px); max-width: 680px; margin: 0 auto; }
+  /* Group */
+  .group { margin-bottom: 6px; }
+  .group-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg2); border-radius: var(--radius); cursor: pointer; border: 0.5px solid var(--border); }
+  .group-header .arrow { font-size: 11px; color: var(--text3); transition: transform .2s; }
+  .group-header .arrow.open { transform: rotate(90deg); }
+  .group-header .label { flex: 1; font-size: 14px; font-weight: 500; }
+  .group-header .count { font-size: 11px; background: var(--bg); color: var(--text2); border: 0.5px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+  .group-body { padding-left: 8px; margin-top: 4px; }
+  /* Subgroup */
+  .subgroup { margin-bottom: 5px; }
+  .subgroup-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-left: 2px solid var(--border); }
+  .subgroup-header .label { flex: 1; font-size: 13px; font-weight: 500; }
+  .btn-add-sub { font-size: 12px; color: var(--text2); background: transparent; border: 0.5px solid var(--border); border-radius: var(--radius); padding: 3px 10px; cursor: pointer; }
+  /* Card */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 5px; margin-left: 10px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 6px; padding: 9px 10px; cursor: pointer; }
+  .card-arrow { font-size: 10px; color: var(--text3); flex-shrink: 0; transition: transform .2s; }
+  .card-arrow.open { transform: rotate(90deg); }
+  .card-num { font-weight: 600; font-size: 13px; flex: 1; }
+  .tag { font-size: 10px; background: var(--blue-bg); color: var(--blue); border: 0.5px solid var(--blue-border); border-radius: 999px; padding: 2px 7px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  .linked-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .card-actions { display: flex; gap: 0; }
+  .card-btn { background: transparent; border: none; cursor: pointer; padding: 4px 7px; font-size: 16px; color: var(--text2); }
+  .card-btn.del { color: var(--danger); }
+  .card-body { border-top: 0.5px solid var(--border); padding: 10px 10px 12px 26px; }
+  .card-comment { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 10px; }
+  .card-links { display: flex; gap: 14px; flex-wrap: wrap; }
+  .card-links a { font-size: 12px; color: var(--blue); text-decoration: none; }
+  .card-links a.fallback { color: var(--text2); }
+  .card-date { font-size: 11px; color: var(--text3); margin-top: 6px; }
+  /* Edit modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: flex-end; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 0 0 calc(var(--safe-bottom) + 16px); width: 100%; max-height: 92vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 10px auto 14px; }
+  .modal-title { font-size: 16px; font-weight: 600; padding: 0 16px 12px; border-bottom: 0.5px solid var(--border); }
+  .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius);
+    padding: 9px 11px; font-size: 15px; color: var(--text); outline: none; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+  .field .row { display: flex; gap: 8px; }
+  .field .row input { flex: 1; }
+  .btn-lookup { background: var(--blue-bg); color: var(--blue); border: 0.5px solid var(--blue-border); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-lookup:disabled { opacity: 0.5; }
+  .modal-footer { display: flex; gap: 8px; padding: 12px 16px 0; }
+  .btn-cancel { flex: 1; background: var(--bg2); color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 11px; font-size: 15px; cursor: pointer; }
+  .btn-save { flex: 2; background: var(--green-bg); color: var(--green); border: 0.5px solid var(--green-border); border-radius: var(--radius); padding: 11px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .btn-save:disabled { opacity: 0.4; }
+  /* Delete confirm */
+  .del-modal { background: var(--bg); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 20px 16px calc(var(--safe-bottom) + 16px); width: 100%; }
+  .del-modal p { font-size: 15px; margin-bottom: 16px; text-align: center; }
+  .del-modal .actions { display: flex; gap: 8px; }
+  /* Toast */
+  .toast { position: fixed; bottom: calc(var(--safe-bottom) + 90px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 200; white-space: nowrap; transition: opacity .3s; pointer-events: none; }
+  .toast.hidden { opacity: 0; }
+  /* Search results */
+  .search-hint { font-size: 13px; color: var(--text3); text-align: center; padding: 24px 0; }
+  /* Migration banner */
+  .banner { background: var(--warn-bg); border: 0.5px solid var(--warn-border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .banner p { flex: 1; font-size: 13px; color: var(--warn); }
+  .btn-migrate { background: var(--warn-bg); color: var(--warn); border: 0.5px solid var(--warn-border); border-radius: var(--radius); padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  /* Empty state */
+  .empty { font-size: 12px; color: var(--text3); padding: 6px 10px 10px 12px; }
+  /* Scroll to top fab */
+  .fab { position: fixed; right: 16px; bottom: calc(var(--safe-bottom) + 16px); background: var(--bg2); border: 0.5px solid var(--border2); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text2); z-index: 40; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <h1>⚖️ BGer Entscheide</h1>
+      <div class="sub" id="subtitle">Wird geladen…</div>
+    </div>
+    <button class="btn-new" onclick="openAdd(null)">+ Neu</button>
+  </div>
+  <div class="searchbar">
+    <input type="search" id="searchInput" placeholder="Suche (Nummer, Stichwort, Schlagwort…)" oninput="onSearch(this.value)">
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-browse" onclick="switchTab('browse')">Rechtsgebiete</div>
+    <div class="tab" id="tab-search" onclick="switchTab('search')">Suchergebnisse</div>
+  </div>
+</div>
+
+<div class="main" id="main"></div>
+
+<div class="toast hidden" id="toast"></div>
+<div class="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editOverlay" onclick="closeEditIfBg(event)" style="display:none">
+  <div class="modal" id="editModal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="editTitle">Neuer Entscheid</div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Urteilsnummer</label>
+        <div class="row">
+          <input type="text" id="f-nummer" placeholder="z.B. 4A_123/2025" oninput="updateSaveBtn()">
+          <button class="btn-lookup" id="lookupBtn" onclick="doLookup()">🔍 Suchen</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Rechtsgebiet</label>
+        <select id="f-kategorie" onchange="updateSaveBtn()"></select>
+      </div>
+      <div class="field">
+        <label>Schlagwörter (max. 2, kommagetrennt)</label>
+        <input type="text" id="f-tags" placeholder="z.B. Verjährung, Kausalität">
+      </div>
+      <div class="field">
+        <label>Datum (optional)</label>
+        <input type="text" id="f-datum" placeholder="z.B. 30.01.2026">
+      </div>
+      <div class="field">
+        <label>Link <span id="linkPreview" style="font-size:11px;color:var(--green);margin-left:8px"></span></label>
+        <input type="url" id="f-url" placeholder="https://… (automatisch oder manuell)" oninput="updateLinkPreview()">
+      </div>
+      <div class="field">
+        <label>Kommentar</label>
+        <textarea id="f-kommentar" placeholder="Leitsatz, Kernaussage, Prozesstipps…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEdit()">Abbrechen</button>
+      <button class="btn-save" id="saveBtn" onclick="saveEntry()" disabled>Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delOverlay" style="display:none">
+  <div class="del-modal">
+    <div class="modal-handle"></div>
+    <p id="delText">Entscheid löschen?</p>
+    <div class="actions">
+      <button class="btn-cancel" style="flex:1" onclick="closeDelete()">Abbrechen</button>
+      <button style="flex:1;background:var(--danger-bg);color:var(--danger);border:0.5px solid var(--danger-border);border-radius:var(--radius);padding:11px;font-size:15px;font-weight:600;cursor:pointer" onclick="confirmDelete()">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Struktur ──────────────────────────────────────────────────────────────────
+const SR = [
+  { id:"1", label:"1 Staat – Volk – Behörden", sub:[
+    { id:"101", label:"101 BV – Verfassungsrecht" },
+    { id:"110", label:"110 Staatsorganisation / Behörden" },
+    { id:"120", label:"120 Sicherheit / Nachrichtendienst" },
+    { id:"130", label:"130 Aussenbeziehungen / Völkerrecht" },
+    { id:"140", label:"140 Bürgerrecht / Ausländerrecht" },
+    { id:"150", label:"150 Politische Rechte / Abstimmungen" },
+    { id:"170", label:"170 Bundesverwaltung / Staatshaftung" },
+    { id:"172", label:"172 Verwaltungsverfahren (VwVG / BGG / VGG)" },
+    { id:"18",  label:"180 Kantone / Gemeinden / Schulwesen" },
+  ]},
+  { id:"2", label:"2 Privatrecht – Zivilrechtspflege – Vollstreckung", sub:[
+    { id:"210", label:"210 ZGB – Personenrecht (Art. 1–89)" },
+    { id:"211", label:"211 ZGB – Persönlichkeitsschutz (Art. 27–28l)" },
+    { id:"212", label:"212 ZGB – Familienrecht (Art. 90–456)" },
+    { id:"213", label:"213 ZGB – Erbrecht (Art. 457–640)" },
+    { id:"214", label:"214 ZGB – Sachenrecht (Art. 641–977)" },
+    { id:"220at", label:"220 OR – Allgemeiner Teil (Art. 1–40)" },
+    { id:"220ha", label:"220 OR – Haftpflichtrecht (Art. 41–61)" },
+    { id:"220ob", label:"220 OR – Obligationenrecht Allg. (Art. 62–183)" },
+    { id:"220bt", label:"220 OR – Kauf / Tausch (Art. 184–238)" },
+    { id:"220sc", label:"220 OR – Schenkung (Art. 239–252)" },
+    { id:"220ct", label:"220 OR – Miete / Pacht (Art. 253–304)" },
+    { id:"220lv", label:"220 OR – Leihe / Darlehen (Art. 305–318)" },
+    { id:"220dt", label:"220 OR – Arbeitsvertrag (Art. 319–362)" },
+    { id:"220wv", label:"220 OR – Werkvertrag (Art. 363–379)" },
+    { id:"220vv", label:"220 OR – Verlagsvertrag (Art. 380–393)" },
+    { id:"220et", label:"220 OR – Auftrag / Geschäftsführung (Art. 394–424)" },
+    { id:"220ko", label:"220 OR – Kommission / Spedition / Fracht (Art. 425–457)" },
+    { id:"220bü", label:"220 OR – Bürgschaft (Art. 492–512)" },
+    { id:"220ft", label:"220 OR – Übrige Verträge (Spiel, Leibrente, etc.)" },
+    { id:"220gt", label:"220 OR – Gesellschaftsrecht (Art. 530–964)" },
+    { id:"221",   label:"221 Handelsregister / Firmenrecht" },
+    { id:"231",   label:"231 Wertpapierrecht / Finanzmarktrecht" },
+    { id:"232",   label:"232 Immaterialgüterrecht (URG / MSchG / PatG)" },
+    { id:"241",   label:"241 UWG – Unlauterer Wettbewerb" },
+    { id:"27",    label:"271 ZPO – Zivilprozessrecht" },
+    { id:"273",   label:"273 Schiedsgerichtsbarkeit" },
+    { id:"281",   label:"281 SchKG – Schuldbetreibung und Konkurs" },
+    { id:"29",    label:"291 IPRG / LugÜ – Internationales Privatrecht" },
+  ]},
+  { id:"3", label:"3 Strafrecht – Strafrechtspflege – Strafvollzug", sub:[
+    { id:"31",  label:"311 StGB – Materielles Strafrecht" },
+    { id:"312", label:"312 StPO – Strafprozessrecht" },
+    { id:"313", label:"313 JStG – Jugendstrafrecht" },
+    { id:"33",  label:"321 Besonderes Strafrecht (BetmG, GwG, etc.)" },
+    { id:"34",  label:"340 Strafvollzug / Massnahmenvollzug" },
+  ]},
+  { id:"4", label:"4 Schule – Wissenschaft – Kultur", sub:[
+    { id:"401", label:"401 Bildung / Hochschulen" },
+    { id:"18s", label:"410 Schulwesen (kantonale Ebene)" },
+    { id:"431", label:"431 Statistik / Archive" },
+    { id:"440", label:"440 Kulturgüter / Medien / Urheberrecht" },
+    { id:"451", label:"451 Natur- und Heimatschutz (NHG)" },
+  ]},
+  { id:"5", label:"5 Landesverteidigung", sub:[
+    { id:"51",  label:"510 Militär / Armee" },
+    { id:"52",  label:"520 Zivilschutz / Bevölkerungsschutz" },
+  ]},
+  { id:"6", label:"6 Finanzen", sub:[
+    { id:"61",  label:"610 Finanzhaushalt / Staatsfinanzen" },
+    { id:"621", label:"621 Münzwesen / Währung" },
+    { id:"631", label:"631 Zölle / Abgaben" },
+    { id:"641", label:"641 MWSTG – Mehrwertsteuer" },
+    { id:"642", label:"642 DBG / StHG – Direkte Steuern" },
+    { id:"651", label:"651 Grundbuch / Vermögensabgaben" },
+    { id:"661", label:"661 Banken / Börsen (FINMAG / BankG)" },
+    { id:"672", label:"672 Versicherungsrecht (VAG)" },
+  ]},
+  { id:"7", label:"7 Öffentliche Werke – Energie – Verkehr", sub:[
+    { id:"70",  label:"700 RPG – Raumplanung / Baurecht" },
+    { id:"711", label:"711 Enteignungsrecht" },
+    { id:"721", label:"721 Wasserrecht / Gewässernutzung" },
+    { id:"725", label:"725 Nationalstrassen / Strassenbau" },
+    { id:"730", label:"730 Energie / Elektrizität (EnG / ElG)" },
+    { id:"732", label:"732 Kernenenergie (KEG)" },
+    { id:"741", label:"741 SVG – Strassenverkehrsrecht" },
+    { id:"742", label:"742 Eisenbahn / öffentlicher Verkehr" },
+    { id:"748", label:"748 Luftfahrt (LFG)" },
+    { id:"74b", label:"814 GSchG – Gewässer- und Umweltschutz" },
+    { id:"814", label:"814 USG – Umweltschutz / Lärm / Luft" },
+    { id:"819", label:"819 Chemikalien / Strahlenschutz" },
+  ]},
+  { id:"8", label:"8 Gesundheit – Arbeit – Soziale Sicherheit", sub:[
+    { id:"810", label:"810 Heilmittel / Transplantation (HMG)" },
+    { id:"811", label:"811 Medizinalberufe (MedBG)" },
+    { id:"812", label:"812 Betäubungsmittel (BetmG)" },
+    { id:"813", label:"813 Lebensmittel / Epidemien" },
+    { id:"820", label:"820 Arbeit / ArG – Arbeitsgesetz" },
+    { id:"821", label:"821 Arbeitsvermittlung / Personalverleih" },
+    { id:"830", label:"830 ATSG – Allgemeiner Teil Sozialversicherung" },
+    { id:"831", label:"831 AHV – Alters- und Hinterlassenenversicherung" },
+    { id:"84",  label:"831 IVG – Invalidenversicherung" },
+    { id:"832", label:"832 KVG – Krankenversicherung" },
+    { id:"83",  label:"832 UVG – Unfallversicherung" },
+    { id:"833", label:"833 MV – Militärversicherung" },
+    { id:"836", label:"836 EO / MSE – Erwerbsersatz" },
+    { id:"837", label:"837 ALV – Arbeitslosenversicherung" },
+    { id:"85",  label:"831 ELG – Ergänzungsleistungen" },
+    { id:"841", label:"841 FamZG – Familienzulagen" },
+    { id:"86",  label:"172 BöB – Beschaffungswesen / Submission" },
+  ]},
+  { id:"9", label:"9 Wirtschaft – Technische Zusammenarbeit", sub:[
+    { id:"910", label:"910 Landwirtschaft (LwG)" },
+    { id:"916", label:"916 Lebensmittelproduktion / Veterinärwesen" },
+    { id:"921", label:"921 Forstwirtschaft / Jagd / Fischerei" },
+    { id:"930", label:"930 Wirtschaftspolitik / Preisüberwachung" },
+    { id:"935", label:"935 Gewerberecht / Berufsausübung" },
+    { id:"941", label:"941 Mass und Gewicht / Akkreditierung" },
+    { id:"944", label:"944 Konsumentenschutz (KKG)" },
+    { id:"94",  label:"943 KG – Kartellrecht / Wettbewerb" },
+    { id:"945", label:"945 Lex Koller / Grundstückerwerb (BewG)" },
+    { id:"946", label:"946 Aussenwirtschaft / Exportkontrolle" },
+    { id:"95",  label:"951 Finanzdienstleistungen (FIDLEG / FINIG)" },
+    { id:"958", label:"958 Börsen / Finanzmarktinfrastruktur" },
+    { id:"96",  label:"961 Versicherungsvertragsrecht (VVG)" },
+  ]},
+  { id:"anwalts", label:"Berufsrecht", sub:[
+    { id:"anwalts1", label:"935.61 BGFA – Anwaltsrecht / Disziplinarrecht" },
+    { id:"notar",    label:"Notariatsrecht (kantonal)" },
+    { id:"aerzte",   label:"Ärzterecht / Medizinalberufe" },
+  ]},
+];
+
+const KAT_MIGRATION = {
+  "pers1":"211","21":"212","23":"214","22":"220at","41":"18s",
+  "27":"27","29":"29","31":"31","32":"312","33":"33","70":"70",
+  "83":"83","84":"84","85":"85","86":"86","94":"94","10":"170",
+  "17":"110","18":"18","anwalts1":"anwalts1","74b":"74b","741":"741","281":"281",
+  "220ft":"220ft","220bt":"220bt","220ct":"220ct","220dt":"220dt",
+  "220et":"220et","220gt":"220gt","220at":"220at","220ha":"220ha",
+  "220sc":"220sc","220lv":"220lv","220wv":"220wv","220vv":"220vv",
+  "220ko":"220ko","220bü":"220bü","220ob":"220ob",
+};
+const VALID = new Set(SR.flatMap(g=>g.sub.map(s=>s.id)));
+const katLabel = id => { for(const g of SR) for(const s of g.sub) if(s.id===id) return s.label; return id; };
+
+// ── Initialdaten ──────────────────────────────────────────────────────────────
+const INITIAL = [
+  {id:"e1",nummer:"5A_405/2025",kategorie:"211",tags:["Persönlichkeitsverletzung","Medien"],kommentar:"Persönlichkeitsverletzung und Medienberichterstattung (im Rahmen Gerichtsverfahren).",datum:"",url:""},
+  {id:"e2",nummer:"5A_193/2026",kategorie:"211",tags:["Persönlichkeitsverletzung","Unschuldsvermutung"],kommentar:"Persönlichkeitsverletzung und Medienberichterstattung. Ex ante Betrachtung des Artikels aus Sicht eines durchschnittlichen Lesers. Kein Recht auf Vergessen. Grundsatz der Anonymisierung ausser bei Persönlichkeiten der Zeitgeschichte. Grenze der Unschuldsvermutung.",datum:"",url:""},
+  {id:"e3",nummer:"5A_615/2024",kategorie:"212",tags:["Nachehelicher Unterhalt","Berechnungsmethode"],kommentar:"Nachehelicher Unterhalt: Auch bei guten Verhältnissen ist die zweistufig-konkrete Methode anzuwenden.",datum:"",url:""},
+  {id:"e4",nummer:"5A_54/2024",kategorie:"212",tags:["Güterrecht","Aktienoptionen"],kommentar:"Güterrecht: Aktienoptionen als EG oder ER. Entscheidend ist der Zeitpunkt, in dem die Option von der Anwartschaft in das Recht auf die Aktien wechselt.",datum:"",url:""},
+  {id:"e5",nummer:"5A_488/2024",kategorie:"212",tags:["Nachehelicher Unterhalt","Güterrecht"],kommentar:"Nachehelicher Unterhalt: Beweislast der Sparquote. Güterrecht ER: Zeitpunkt der Vermögensberechnung (Stichtag). Beweislast: Eigengut erst wenn nachgewiesen, sonst Errungenschaft (ZGB 200).",datum:"",url:""},
+  {id:"e6",nummer:"5A_751/2024",kategorie:"212",tags:["Kinderunterhalt","Güterrecht"],kommentar:"Kinderunterhalt: Schulstufenmodell, Betreuungsunterhalt, Sparquote, Volljährigenunterhalt. Güterrecht: Eigengutberechnung.",datum:"",url:""},
+  {id:"e7",nummer:"5A_101/2025",kategorie:"212",tags:["Elterliche Sorge","Kindesschutz"],kommentar:"Partieller Entzug der elterlichen Sorge für bestimmte Fragen.",datum:"",url:""},
+  {id:"e8",nummer:"5A_24/2024",kategorie:"212",tags:["Vorsorgeausgleich","Getrenntleben"],kommentar:"ZGB 122/3: Langes Getrenntleben ist kein Ausnahmegrund für Abweichung von der hälftigen Teilung des Vorsorgevermögens nach Art. 124b.",datum:"",url:""},
+  {id:"e9",nummer:"5A_356/2025",kategorie:"212",tags:["Nachehelicher Unterhalt","Altersehe"],kommentar:"Altersehe und nachehelicher Unterhalt. Auch eine Altersehe kann lebensprägend sein.",datum:"",url:""},
+  {id:"e10",nummer:"5A_102/2025",kategorie:"212",tags:["Obhut","Kindeswohl"],kommentar:"Alternierende Obhut: Bei fehlender Kommunikation und medizinischen Problemen der Kinder liegt alleinige Obhut im Kindeswohl.",datum:"",url:""},
+  {id:"e11",nummer:"5A_1127/2025",kategorie:"212",tags:["Fürsorgerische Unterbringung","Urteilsfähigkeit"],kommentar:"Fürsorgerische Unterbringung: Qualifizierte Einwilligung (Urteilsfähigkeit) erforderlich. Blosses Nicht-Wehren stellt keine Freiwilligkeit dar.",datum:"",url:""},
+  {id:"e12",nummer:"5A_112/2025",kategorie:"214",tags:["Miteigentum","Aufhebung"],kommentar:"Aufhebung Miteigentum.",datum:"",url:""},
+  {id:"e13",nummer:"5A_362/2025",kategorie:"214",tags:["Stockwerkeigentum","Zweckänderung"],kommentar:"Stockwerkeigentum: Feste als Zwecksänderung oder Benutzungsänderung.",datum:"",url:""},
+  {id:"e14",nummer:"5A_1102/2025",kategorie:"214",tags:["Bauhandwerkerpfandrecht","Glaubhaftmachung"],kommentar:"Bauhandwerkerpfandrecht: Jeder Franken muss genau dem Grundstück zugeteilt werden. Unzulässig prozentual aufzuteilen.",datum:"",url:""},
+  {id:"e15",nummer:"5A_291/2025",kategorie:"214",tags:["Nachbarrecht","Immissionen"],kommentar:"Nachbarrecht: Übermässige Immission nach ZGB 684 bei Schattenwurf und Aussichtsentzug.",datum:"",url:""},
+  {id:"e16",nummer:"2C_437/2025",kategorie:"94",tags:["Lex Koller","Trust"],kommentar:"Immobilienübertragung auf Trusts und Lex Koller (BewG). Rein formelle Betrachtung – keine Ausnahme nach Art. 7 lit. b.",datum:"",url:""},
+  {id:"e17",nummer:"5A_435/2025",kategorie:"220et",tags:["Verjährung","Auftrag"],kommentar:"Verjährung Ansprüche gegen Auftragnehmer: Frist beginnt für jeden Anspruch einzeln mit Beendigung der Aufgabe.",datum:"",url:""},
+  {id:"e18",nummer:"4A_321/2025",kategorie:"220ha",tags:["Geschäftsherrenhaftung","Haftpflicht"],kommentar:"Geschäftsherrenhaftung.",datum:"",url:""},
+  {id:"e19",nummer:"4A_139/2025",kategorie:"220et",tags:["Retrozessionen","Bankenrecht"],kommentar:"Retrozessionen bei Banken: Zulässig wenn kein Vertrauensverhältnis besteht (Bank rein ausführend).",datum:"",url:""},
+  {id:"e20",nummer:"4A_648/2024",kategorie:"220at",tags:["Verjährung","Körperschaden"],kommentar:"Verjährung und Körperschäden: Frist beginnt bei unbekannten Ursachen erst mit Kenntnis (Asbestfälle). Strafrechtliche Verjährung bei ungeborenen Kindern nicht anwendbar.",datum:"",url:""},
+  {id:"e21",nummer:"5A_403/2025",kategorie:"220at",tags:["Bedingung","Nebenpflichtverletzung"],kommentar:"OR 156: Treuwidrige Verhinderung des Eintritts einer Bedingung. OR 97: Schadenersatz wegen Nebenpflichtverletzung. Fingierte Bedingung.",datum:"",url:""},
+  {id:"e22",nummer:"4A_97/2025",kategorie:"220ct",tags:["Mietrecht","Vorzeitige Rückgabe"],kommentar:"Mietrecht OR 264: Vorzeitige Rückgabe. Blosse Unterlassung der Nachmietersuche gilt nicht als treuwidrig; Böswilligkeit vorausgesetzt.",datum:"",url:""},
+  {id:"e23",nummer:"4A_233/2025",kategorie:"220at",tags:["Vertragsauslegung","Rachekündigung"],kommentar:"OR 18 Vertragsauslegung: Im Zweifel gegen den Verfasser. Arbeitsrecht OR 336: Rachekündigung.",datum:"",url:""},
+  {id:"e24",nummer:"4A_158/2025",kategorie:"220et",tags:["Rechenschaftspflicht","Auftrag"],kommentar:"OR 400 Rechenschaftspflicht: Grenze bei rein internen Dokumenten. Kläger muss fehlende Dokumente konkret bezeichnen.",datum:"",url:""},
+  {id:"e25",nummer:"4A_442/2025",kategorie:"220ct",tags:["Mietrecht","Vertragsauslegung"],kommentar:"OR 18: Miete oder Wohnrecht.",datum:"",url:""},
+  {id:"e26",nummer:"4A_288/2025",kategorie:"220ct",tags:["Mietrecht","Kündigungsschutz"],kommentar:"Mietrecht: Keine missbräuchliche Kündigung zwecks Verkauf leerer Wohnung. Voraussetzungen Rachekündigung.",datum:"",url:""},
+  {id:"e27",nummer:"4A_267/2025",kategorie:"220at",tags:["Konventionalstrafe","Unmöglichkeit"],kommentar:"Keine Konventionalstrafe aufgrund nachträglicher Unmöglichkeit (Art. 163 Abs. 2 i.V.m. Art. 97, Art. 119 Abs. 1 OR).",datum:"16.02.2026",url:""},
+  {id:"e28",nummer:"4A_200/2025",kategorie:"220dt",tags:["Spesen","Schadensbemessung"],kommentar:"OR 327a: Spesenpauschalen nur zulässig soweit tatsächlicher Aufwand gedeckt. OR 42 II: Schadensschätzung bei Beweisnot.",datum:"",url:""},
+  {id:"e29",nummer:"4A_102/2025",kategorie:"220dt",tags:["Kündigung","Missbräuchlichkeit"],kommentar:"Missbräuchliche Kündigung: Wertung mehrerer Kündigungsgründe.",datum:"",url:""},
+  {id:"e30",nummer:"4A_398/2025",kategorie:"220dt",tags:["Fristlose Kündigung","Konkurrenzklausel"],kommentar:"Fristlose Kündigung: Beweislast. Konkurrenzklausel: Keine Anwendung bei starker persönlicher Komponente der Dienstleistung.",datum:"",url:""},
+  {id:"e31",nummer:"4A_624/2025",kategorie:"220ct",tags:["Kündigung","Mieterausweisung"],kommentar:"Missbräuchliche Kündigung und Mieterausweisung.",datum:"",url:""},
+  {id:"e32",nummer:"4A_56/2026",kategorie:"220dt",tags:["Fristlose Kündigung","Verwirkung"],kommentar:"Arbeitsrecht: Verwirkung ausserordentlichen Kündigungsgrund (sofort nach Kenntnis, sonst Genehmigungsvermutung).",datum:"",url:""},
+  {id:"e33",nummer:"4A_185/2025",kategorie:"220ct",tags:["Mietrecht","Kündigung"],kommentar:"Mietrecht: Kündigung gültig, zwischen Mieter und Erblasserin keine Familienwohnung; Erbin tritt in Vertrag ein.",datum:"",url:""},
+  {id:"e34",nummer:"4A_592/2024",kategorie:"27",tags:["Substantiierung","Rechenschaftspflicht"],kommentar:"Substantiierungslast: Stundendetaillierung als Rechenschaftspflicht des Auftragnehmers.",datum:"",url:""},
+  {id:"e35",nummer:"4A_84/2024",kategorie:"27",tags:["Fristberechnung","Zustellung"],kommentar:"Fristberechnung und Zustellfiktion. Bei notwendiger Streitgenossenschaft hat jeder Beteiligte die eigene Frist zu wahren.",datum:"",url:""},
+  {id:"e36",nummer:"5A_682/2023",kategorie:"27",tags:["Ordnungsbusse","ZPO 343"],kommentar:"Ordnungsbusse ZPO 343: Maximalbetrag Fr. 5'000 pro Verfahren. Mehrere Verstösse = separate Verfahren.",datum:"",url:""},
+  {id:"e37",nummer:"4A_364/2025",kategorie:"281",tags:["SchKG","Kostenvorschuss"],kommentar:"Art. 86 SchKG nur bei Betreibungsverfahren. Für gerichtliche Verfahren gilt Art. 111 ZPO.",datum:"",url:""},
+  {id:"e38",nummer:"4A_246/2025",kategorie:"27",tags:["Substantiierung","Bestreitung"],kommentar:"Behauptungs- und Substantiierungspflicht sowie Bestreitungsgrad.",datum:"",url:""},
+  {id:"e39",nummer:"2C_665/2025",kategorie:"27",tags:["Vertretung","Elterliche Sorge"],kommentar:"Inhaber der elterlichen Sorge berechtigt zur Vertretung des minderjährigen Sohnes (Art. 304 Abs. 1 ZGB).",datum:"",url:""},
+  {id:"e40",nummer:"4A_360/2025",kategorie:"27",tags:["Substantiierung","Prozessmaximen"],kommentar:"Substantiierungslast: Je detaillierter der Kläger, desto detaillierter muss die Beklagte bestreiten. Dienende Funktion des Prozessrechts.",datum:"",url:""},
+  {id:"e41",nummer:"1C_152/2024",kategorie:"27",tags:["Gerichtsnotorietät","Beweiswürdigung"],kommentar:"Google Street / Internetbilder als gerichtsnotorische Tatsachen (antizipierte Beweiswürdigung).",datum:"",url:""},
+  {id:"e42",nummer:"7B_178/2026",kategorie:"27",tags:["Dass-Verfügungen","Komplexität"],kommentar:"Dass-Verfügungen: Nur bei einfachen und nicht-komplexen Fällen zulässig.",datum:"",url:""},
+  {id:"e43",nummer:"1C_208/2025",kategorie:"27",tags:["Rechtsschutzinteresse","Legitimation"],kommentar:"Rechtsschutzinteresse: Prüfung trotz fehlendem aktuellem Interesse.",datum:"",url:""},
+  {id:"e44",nummer:"5A_66/2026",kategorie:"281",tags:["Konkurs","Klagelegitimation"],kommentar:"Klagelegitimation trotz Konkurseröffnung: Verlangen aufschiebender Wirkung. Aufhebung Vermögensverwaltungsverträge ex lege.",datum:"",url:""},
+  {id:"e45",nummer:"5A_898/2025",kategorie:"27",tags:["Sicherstellung","Parteikosten"],kommentar:"Sicherstellung Parteikosten (ZPO 99): Keine besondere Gefährdung bei blossem Vermögensanspruch ohne Liquidität.",datum:"",url:""},
+  {id:"e46",nummer:"5A_373/2025",kategorie:"27",tags:["Rückweisung","Bindungswirkung"],kommentar:"Bindungswirkung von Rückweisungsurteilen.",datum:"",url:""},
+  {id:"e47",nummer:"1C_132/2026",kategorie:"27",tags:["Beschwerde BGG","Nichteintreten"],kommentar:"Anforderungen an Beschwerde und Anfechtung Nichteintretensentscheid (Art. 42 BGG): Begründung muss sich auf Erwägungen beziehen die zum Nichteintreten führten.",datum:"",url:""},
+  {id:"e48",nummer:"5A_989/2025",kategorie:"281",tags:["Gerichtsferien","SchKG-Verfahren"],kommentar:"ZPO 142 vs SchKG 63: Keine Gerichtsferien in SchKG-Summarverfahren (Rechtsöffnung, Konkurseröffnung, Arrest).",datum:"",url:""},
+  {id:"e49",nummer:"4A_568/2025",kategorie:"281",tags:["Rechtsöffnung","Fristenstillstand"],kommentar:"Beschwerde gegen Rechtsöffnungsentscheide: 10 Tage, kein ZPO-Fristenstillstand. Zustellung während Betreibungsferien erst am ersten Tag danach wirksam.",datum:"",url:""},
+  {id:"e50",nummer:"1C_592/2025",kategorie:"27",tags:["Zustellung","Fristbeginn"],kommentar:"Zustellung A-Post Plus am Samstag: ZPO erst am nächsten Werktag; kantonales VRG ohne Regelung = Zustellung am Samstag.",datum:"",url:""},
+  {id:"e51",nummer:"5A_715/2025",kategorie:"27",tags:["Streitgegenstand","Res Iudicata"],kommentar:"Zweigliedriger Streitgegenstand: Echte Noven = neuer Sachverhalt = keine Res Iudicata.",datum:"",url:""},
+  {id:"e52",nummer:"BGE 150 III 209",kategorie:"27",tags:["Notorische Tatsachen","Handelsregister"],kommentar:"Ausländische Handelsregistereinträge = nicht notorische Tatsachen (Art. 151 ZPO) – müssen behauptet und bewiesen werden.",datum:"",url:""},
+  {id:"e53",nummer:"4A_493/2023",kategorie:"27",tags:["Spruchkörper","Gehörsrecht"],kommentar:"Auswechslung im Spruchkörper: Mitteilungs-/Begründungspflicht des Gerichts; Unterlassung = Verletzung Art. 30 Abs. 1 BV.",datum:"17.09.2024",url:""},
+  {id:"e54",nummer:"4A_604/2025",kategorie:"27",tags:["Ausstand","Gerichtspräsident"],kommentar:"Ausstand: Auch wenn Gerichtspräsident für Gesamtgericht sprach, muss gegen jedes Mitglied separates Ausstandsgesuch gestellt werden.",datum:"",url:""},
+  {id:"e55",nummer:"4A_42/2026",kategorie:"27",tags:["Ärztliche Berichte","Urkunden"],kommentar:"ZPO 177: Private ärztliche Berichte neu als Urkunden. Freie Beweiswürdigung bleibt; Abhängigkeitsverhältnis zu berücksichtigen.",datum:"",url:""},
+  {id:"e56",nummer:"4A_178/2025",kategorie:"29",tags:["Gerichtsstand","LugÜ"],kommentar:"Gerichtsstandsvereinbarung in kaufmännischem Bestätigungsschreiben und LugÜ 23.",datum:"",url:""},
+  {id:"e57",nummer:"5A_50/2025",kategorie:"29",tags:["IPRG","Niederlassung"],kommentar:"IPRG 126: Unzulässig Recht am Ort der Geschäftsniederlassung anzuwenden wenn Vertreter privat handelt.",datum:"",url:""},
+  {id:"e58",nummer:"4A_157/2025",kategorie:"29",tags:["Ordre Public","Urteilsanerkennung"],kommentar:"Art. 27 IPRG Ordre Public: Anerkennung ausländischer Schnellverfahren-Urteile. Gehörige Zustellung erfordert ähnliche ausländische Regelung + materielle Prüfung.",datum:"",url:""},
+  {id:"e59",nummer:"OGer ZH PS250140",kategorie:"281",tags:["Arrest","LugÜ"],kommentar:"LugÜ: Gläubiger muss Arrestgegenstände nicht durch Beweismittel glaubhaft machen – substantiierte Behauptung genügt.",datum:"10.07.2025",url:""},
+  {id:"e60",nummer:"5A_96/2026",kategorie:"281",tags:["Konkurs","Rechtsmissbrauch"],kommentar:"Freiwillige Konkursklärung Art. 191 SchKG: Rechtsmissbräuchlich wenn Konkursdividende offensichtlich ungenügend.",datum:"",url:""},
+  {id:"e61",nummer:"4A_76/2026",kategorie:"281",tags:["Aberkennungsklage","Beweislast"],kommentar:"Aberkennungsklage und Schuldanerkennung OR 18: Beweislastumkehr wenn Gläubiger sich auf Schuldanerkennung stützt.",datum:"",url:""},
+  {id:"e62",nummer:"4A_418/2025",kategorie:"281",tags:["SchKG-Beschwerde","Verteilung"],kommentar:"SchKG-Beschwerde (Art. 17 SchKG): Zulässig auch wenn Betreibungsamt Beträge bereits vor Ablauf der Beschwerdefrist verteilt hat.",datum:"22.04.2026",url:""},
+  {id:"e63",nummer:"2C_315/2024",kategorie:"anwalts1",tags:["Berufsgeheimnis","Interessenkonflikt"],kommentar:"Anwalt darf neues Mandat nur annehmen wenn Berufsgeheimnis gewahrt. Gilt auch bei vorheriger Notarstätigkeit.",datum:"",url:""},
+  {id:"e64",nummer:"2C_352/2025",kategorie:"anwalts1",tags:["Disziplinarverfahren","Entschädigung"],kommentar:"Entschädigung des angezeigten Anwalts bei mutwilliger Anzeige richtet sich nach kantonalem Recht.",datum:"",url:""},
+  {id:"e65",nummer:"1C_447/2024",kategorie:"70",tags:["Erneuerbare Energien","Gabarit-Prinzip"],kommentar:"Baubewilligung erneuerbare Energien: Gabarit-Prinzip. Nicht mehr zwingend eine spezifische Komponente bewilligen.",datum:"",url:""},
+  {id:"e66",nummer:"1C_153/2025",kategorie:"70",tags:["ISOS","RPG 18"],kommentar:"Art. 18 RPG direkt anwendbar unabhängig Bauzone. Pflicht bei ISOS-Lage kantonale Fachstelle anfragen.",datum:"",url:""},
+  {id:"e67",nummer:"1C_302/2025",kategorie:"70",tags:["Gebäudebegriff","Baurecht"],kommentar:"Baurecht: Definition/Unterscheidung ob 1 oder 2 Gebäudekörper vorliegen.",datum:"",url:""},
+  {id:"e68",nummer:"1C_298/2024",kategorie:"70",tags:["ISOS","Zonenplan"],kommentar:"ISOS Erhaltungsziel B: Einzelfallrevision Zonenplan. Baumschutz ausländischer Bäume.",datum:"",url:""},
+  {id:"e69",nummer:"1C_561/2024",kategorie:"70",tags:["Schutzzone","Restwasser"],kommentar:"RPG 24: Kommunale Schutzzone kein absolutes Bauverbot. GSchG 31/33 Restwassermenge: Einzelfallabwägung.",datum:"",url:""},
+  {id:"e70",nummer:"1C_650/2023",kategorie:"70",tags:["Nutzungsplan","ISOS"],kommentar:"Nachträgliche Prüfung rechtskräftiger Nutzungsplan zulässig bei Widerspruch zu neuerem höherrangigen Recht.",datum:"",url:""},
+  {id:"e71",nummer:"1C_225/2025",kategorie:"70",tags:["Nichtbauzone","Unterirdisch"],kommentar:"Unterirdische Nutzung = oberirdische Nutzung (RPG 3). Unterirdisches Parkhaus in Nichtbauzone braucht besonderes Verfahren.",datum:"",url:""},
+  {id:"e72",nummer:"1C_436/2024",kategorie:"70",tags:["Solarpanels","ISOS"],kommentar:"RPG 18a vs ISOS: Gemeinde kann via Schutzzone Ästhetik vor erneuerbaren Energien priorisieren.",datum:"",url:""},
+  {id:"e73",nummer:"1C_297/2024",kategorie:"70",tags:["Sondernutzungsplan","Machbarkeit"],kommentar:"Sondernutzungsplan: BGer prüft nur Machbarkeit, nicht Bewilligungsfähigkeit im Detail.",datum:"",url:""},
+  {id:"e74",nummer:"1C_597/2024",kategorie:"70",tags:["GIS","Gerichtsnotorietät"],kommentar:"GIS-Einträge = gerichtsnotorische Tatsachen. Gewässerschutz: Abstandsvorschriften eingedolter Bäche.",datum:"",url:""},
+  {id:"e75",nummer:"1C_158/2025",kategorie:"74b",tags:["Gewässerschutz","Standortgebundenheit"],kommentar:"GSchV Art. 41c: Ausnahme Standortgebundenheit in dicht überbauten Gebieten. Periphere Villenzonen erfüllen Kriterium nicht.",datum:"",url:""},
+  {id:"e76",nummer:"1C_438/2025",kategorie:"70",tags:["Mobilfunk","NISV"],kommentar:"Mobilfunkantenne: NISV abschliessend, Kantone keine weitere Kompetenz. Standortgebundenheit bei bestehenden Antennen (Vermutung).",datum:"",url:""},
+  {id:"e77",nummer:"1C_311/2025",kategorie:"70",tags:["Planungszone","RPG 27"],kommentar:"Planungszone Art. 27 RPG: Max. 5 Jahre. Verlängerung muss innerhalb dieser 5 Jahre erfolgen.",datum:"",url:""},
+  {id:"e78",nummer:"1C_235/2024",kategorie:"70",tags:["Baubewilligung","Auflagen"],kommentar:"Einheit der Baubewilligung: Wesentliche Mängel können nicht als Auflagen gestaltet werden.",datum:"",url:""},
+  {id:"e79",nummer:"8C_656/2024",kategorie:"83",tags:["Beweiswert","Integritätsentschädigung"],kommentar:"Voraussetzungen beratender Arzt des Versicherers. Berechnung Integritätsentschädigung und leidensbedingter Abzug.",datum:"",url:""},
+  {id:"e80",nummer:"8C_399/2025",kategorie:"83",tags:["Leistungskürzung","Haft"],kommentar:"ATSG 21: Kürzung Geldleistungen bei Haft über 3 Monate: rückwirkend auf ersten Tag des Monats nach Ereignis.",datum:"",url:""},
+  {id:"e81",nummer:"8C_72/2025",kategorie:"83",tags:["Kausalität","Psychische Folgen"],kommentar:"UVG: Adäquate Kausalität bei psychischen Folgen.",datum:"",url:""},
+  {id:"e82",nummer:"8C_477/2024",kategorie:"83",tags:["Erste Stunde","Listenverletzung"],kommentar:"Aussage der ersten Stunde. Unfallähnliche Körperverletzung.",datum:"",url:""},
+  {id:"e83",nummer:"8C_67/2025",kategorie:"83",tags:["Wagnis","Unfallbegriff"],kommentar:"Unfall bei Wagnis (Tiefseetauchen).",datum:"",url:""},
+  {id:"e84",nummer:"8C_143/2024",kategorie:"83",tags:["Beweiswert","Ärztliche Berichte"],kommentar:"Beweiswert ärztlicher Bericht. Beweiswert versicherungsinterner ärztlicher Berichte.",datum:"",url:""},
+  {id:"e85",nummer:"8C_52/2025",kategorie:"83",tags:["Berufskrankheit","Beweislastumkehr"],kommentar:"Kausalität bei Berufskrankheit: Beweislastumkehr. Medizinische Literatur gerichtsnotorisch. Bei Zweifeln am Gutachten ist SV zu ergänzen.",datum:"",url:""},
+  {id:"e86",nummer:"8C_802/2025",kategorie:"83",tags:["Überwachung","Gutachten"],kommentar:"Geheime Überwachung: Art. 43a ATSG. Video einzelner Lebensabschnitte ohne Symptome genügt nicht für Verzicht auf unabhängiges Gutachten.",datum:"",url:""},
+  {id:"e87",nummer:"8C_119/2025",kategorie:"84",tags:["IV-Rente","LSE-Tabelle"],kommentar:"IV-Rentenberechnung: LSE + leidensbedingter Abzug bei LSE Niveau 1 + Alter + IVG 26bis.",datum:"",url:""},
+  {id:"e88",nummer:"8C_137/2025",kategorie:"83",tags:["Komplementärrente","Teilzeit"],kommentar:"UV vs. IV: UVG = Kausalversicherung, IVG = Finalversicherung. Komplementärrente Teilzeitversicherte.",datum:"",url:""},
+  {id:"e89",nummer:"8C_448/2025",kategorie:"83",tags:["Versicherungspflicht","Alleinaktionär"],kommentar:"Alleinaktionär in eigener Gesellschaft obligatorisch UV-versichert (Art. 1a Abs. 1 lit. a UVG).",datum:"",url:""},
+  {id:"e90",nummer:"8C_340/2025",kategorie:"83",tags:["Integritätsentschädigung","Hilfsmittel"],kommentar:"Hilfsmittel bei Integritätsentschädigung grundsätzlich unbeachtlich. Ausnahme Sehhilfen gilt nicht für Hörgeräte.",datum:"",url:""},
+  {id:"e91",nummer:"8C_516/2025",kategorie:"83",tags:["Unfallbegriff","Listenverletzung"],kommentar:"Unfallbegriff und Listenverletzung.",datum:"",url:""},
+  {id:"e92",nummer:"8C_441/2025",kategorie:"83",tags:["Invaliditätsgrad","Valideneinkommen"],kommentar:"Invaliditätsgrad, Valideneinkommen.",datum:"",url:""},
+  {id:"e93",nummer:"2C_207/2025",kategorie:"86",tags:["Submission","Ausschluss"],kommentar:"Submission: Ausschlusspflicht bei Verletzung Preisbildungsvorschriften nur bei Widerspruch zu grundlegenden Zielen des Beschaffungsrechts.",datum:"",url:""},
+  {id:"e94",nummer:"7B_612/2025",kategorie:"31",tags:["Beweisverwertung","Territorialität"],kommentar:"Beweisverwertung und Territorialitätsprinzip: Ausländische Aufnahmen mit nachträglicher Zustimmung unverwertbar. Art. 30 EIMP anwendbar.",datum:"",url:""},
+  {id:"e95",nummer:"6B_913/2024",kategorie:"31",tags:["Verfügung","Pfändung"],kommentar:"Art. 169 StGB: Pfändung auf Pfandverwertung nicht erfasst.",datum:"",url:""},
+  {id:"e96",nummer:"6B_541/2025",kategorie:"31",tags:["Körperverletzung","Trauma"],kommentar:"Abgrenzung Tätlichkeit und Körperverletzung. Posttraumatische Störung (Trauma) als Körperverletzung.",datum:"",url:""},
+  {id:"e97",nummer:"6B_7/2024",kategorie:"31",tags:["Sexualstrafrecht","Widerstandsunfähigkeit"],kommentar:"Art. 191 StGB: Umfassen des Penis = sexuelle Handlung. Schlaftrunkene Person gilt als widerstandsunfähig.",datum:"13.02.2026",url:""},
+  {id:"e98",nummer:"6B_942/2025",kategorie:"33",tags:["Betäubungsmittel","Qualifizierter Tatbestand"],kommentar:"BetmG: 18g-Grenze für qualifizierten Straftatbestand (Art. 19 Abs. 2 lit. a) bestätigt.",datum:"",url:""},
+  {id:"e99",nummer:"6B_541/2025",kategorie:"312",tags:["Anklageprinzip","Anklageschrift"],kommentar:"Anklageprinzip: Fehlen eines Wortes = keine Verletzung sofern aus Kontext erkennbar.",datum:"",url:""},
+  {id:"e100",nummer:"7B_206/2024",kategorie:"312",tags:["Entsiegelung","Kostenfolgen"],kommentar:"Kostenfolgen Entsiegelungsverfahren: Keine Grundlage für Kostenpflicht unbeteiligter Dritter (Art. 426/427 StPO abschliessend).",datum:"",url:""},
+  {id:"e101",nummer:"7B_216/2026",kategorie:"312",tags:["Sicherheitshaft","Zuständigkeit"],kommentar:"Sicherheitshaft: Aktenübergabe an Berufungsinstanz = Kompetenzübergang für Haftverlängerung.",datum:"",url:""},
+  {id:"e102",nummer:"7B_550/2024",kategorie:"312",tags:["Siegelung","Datensicherung"],kommentar:"Datensicherung/Spiegelung während Siegelungsverfahren zulässig, sofern keine Einsicht erfolgt.",datum:"",url:""},
+  {id:"e103",nummer:"7B_558/2025",kategorie:"312",tags:["Entsiegelung","Arztgeheimnis"],kommentar:"Entsiegelung: Nichtbeschuldigte unter Siegelungsrecht (Verhältnismässigkeit). Schutz Arztgeheimnis: Pflicht des ZMG.",datum:"",url:""},
+  {id:"e104",nummer:"1C_266/2025",kategorie:"220dt",tags:["Fürsorgepflicht","Kündigung"],kommentar:"Keine Verletzung Fürsorgepflicht wenn AG chaotische Umstände offenlegt. Missbräuchliche Kündigung wegen ADHS: abgewiesen.",datum:"",url:""},
+  {id:"e105",nummer:"2C_300/2023",kategorie:"18s",tags:["Schulpflicht","Religionsfreiheit"],kommentar:"Befreiung vom Schulschwimmunterricht.",datum:"",url:""},
+  {id:"e106",nummer:"2C_620/2025",kategorie:"18s",tags:["Schulzuteilung","BV 19"],kommentar:"BV 19: Schulzuteilung.",datum:"",url:""},
+  {id:"e107",nummer:"2C_599/2024",kategorie:"94",tags:["Wirtschaftsfreiheit","BV 27"],kommentar:"BV 27: Wirtschaftsfreiheit.",datum:"",url:""},
+  {id:"e108",nummer:"2C_189/2025",kategorie:"94",tags:["Staatliche Aufgaben","Verfügung"],kommentar:"Private mit staatlichem Leistungsauftrag: Handlungen gelten als staatlich. Kündigung = Verfügung, Verfügungsverfahren nötig.",datum:"",url:""},
+  {id:"e109",nummer:"2C_552/2025",kategorie:"170",tags:["Staatshaftung","Bundesvorrang"],kommentar:"Staatshaftung: Vorrang Bundesrecht vor kantonalem Verwaltungsrecht.",datum:"",url:""},
+  {id:"e110",nummer:"1C_318/2024",kategorie:"170",tags:["Tempo 30","Lärmschutz"],kommentar:"Tempo 30 auf Kantonsstrasse: Lärmberechnung mit Computerprogramm zulässig. Flüsterasphalt kein Ersatz für Temporeduktion.",datum:"",url:""},
+  {id:"e111",nummer:"1C_454/2025",kategorie:"741",tags:["Führerausweis","Fahreignung"],kommentar:"Führerausweisentzug: Strafrecht (Fahrfähigkeit) vs. Verwaltungsrecht (Fahreignung). Verwaltungsgericht kann trotz Freispruch Ausweis entziehen bei nachgewiesenem Alkoholproblem.",datum:"",url:""},
+  {id:"e112",nummer:"2C_318/2024",kategorie:"172",tags:["Verbände","Beschwerdelegitimation"],kommentar:"Beschwerdelegitimation von Verbänden.",datum:"",url:""},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let data = [];
+let expanded = {};
+let expandedCards = {};
+let currentTab = 'browse';
+let searchQ = '';
+let editingId = null;
+let deleteId = null;
+let toastTimer = null;
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+const STORE_KEY = 'bger_v3';
+function loadData() {
+  try {
+    const s = localStorage.getItem(STORE_KEY);
+    if (s) {
+      data = JSON.parse(s);
+      const needsMig = data.some(e => !VALID.has(e.kategorie) && KAT_MIGRATION[e.kategorie]);
+      if (needsMig) { migrationPending = true; }
+    } else { data = JSON.parse(JSON.stringify(INITIAL)); }
+  } catch { data = JSON.parse(JSON.stringify(INITIAL)); }
+}
+function saveData() { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+let migrationPending = false;
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'bger_entscheide.json'; a.click();
+}
+function importJSON() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try { data = JSON.parse(ev.target.result); saveData(); render(); showToast('Import erfolgreich'); }
+      catch { showToast('Fehler beim Import'); }
+    };
+    r.readAsText(f);
+  };
+  input.click();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('subtitle').textContent = `${data.length} Entscheide`;
+  const main = document.getElementById('main');
+  let html = '';
+
+  if (migrationPending) {
+    html += `<div class="banner"><p>Gespeicherte Einträge verwenden alte Kategorien.</p><button class="btn-migrate" onclick="runMigration()">Migrieren</button></div>`;
+  }
+
+  // Export/Import row
+  html += `<div style="display:flex;gap:8px;margin-bottom:12px">
+    <button onclick="exportJSON()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:8px;font-size:13px;color:var(--text2);cursor:pointer">📤 Exportieren</button>
+    <button onclick="importJSON()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:8px;font-size:13px;color:var(--text2);cursor:pointer">📥 Importieren</button>
+  </div>`;
+
+  if (currentTab === 'search') {
+    if (searchQ.length < 2) {
+      html += `<div class="search-hint">Mindestens 2 Zeichen eingeben…</div>`;
+    } else {
+      // Match by text content
+      const textResults = data.filter(e =>
+        e.nummer.toLowerCase().includes(searchQ) ||
+        e.kommentar.toLowerCase().includes(searchQ) ||
+        (e.tags||[]).some(t => t.toLowerCase().includes(searchQ))
+      );
+      // Match by Rechtsgebiet label
+      const katMatches = SR.flatMap(g=>g.sub).filter(s => s.label.toLowerCase().includes(searchQ)).map(s=>s.id);
+      const katResults = katMatches.length ? data.filter(e => katMatches.includes(e.kategorie) && !textResults.find(r=>r.id===e.id)) : [];
+
+      const total = textResults.length + katResults.length;
+      if (!total) html += `<div class="search-hint">Keine Treffer für „${esc(searchQ)}"</div>`;
+      else {
+        html += `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">${total} Treffer</div>`;
+        if (textResults.length) {
+          html += `<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Inhalt / Nummer / Schlagwort</div>`;
+          textResults.forEach(e => { html += renderCard(e, true); });
+        }
+        if (katResults.length) {
+          const katLabels = [...new Set(katMatches.filter(id => katResults.some(e=>e.kategorie===id)).map(id=>katLabel(id)))].join(', ');
+          html += `<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px">Rechtsgebiet: ${esc(katLabels)}</div>`;
+          katResults.forEach(e => { html += renderCard(e, true); });
+        }
+      }
+    }
+  } else {
+    SR.forEach(g => {
+      const ids = g.sub.map(s => s.id);
+      const cnt = data.filter(e => ids.includes(e.kategorie)).length;
+      if (!cnt) return;
+      const isOpen = expanded[g.id];
+      html += `<div class="group">
+        <div class="group-header" onclick="toggleGroup('${g.id}')">
+          <span class="arrow ${isOpen?'open':''}">▶</span>
+          <span class="label">${esc(g.label)}</span>
+          <span class="count">${cnt}</span>
+        </div>`;
+      if (isOpen) {
+        html += `<div class="group-body">`;
+        g.sub.forEach(sub => {
+          const es = data.filter(e => e.kategorie === sub.id);
+          html += `<div class="subgroup">
+            <div class="subgroup-header">
+              <span class="label">${esc(sub.label)}</span>
+              <button class="btn-add-sub" onclick="openAdd('${sub.id}')">+ Hinzufügen</button>
+            </div>`;
+          if (!es.length) {
+            html += `<div class="empty">Noch keine Einträge</div>`;
+          } else {
+            es.forEach(e => { html += renderCard(e, false); });
+          }
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    });
+  }
+  main.innerHTML = html;
+}
+
+function renderCard(e, showKat) {
+  const open = expandedCards[e.id];
+  const tags = (e.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  const linked = e.url ? `<span class="linked-dot" title="Verlinkt"></span>` : '';
+  const kat = showKat ? `<span style="font-size:10px;color:var(--text3);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(katLabel(e.kategorie))}</span>` : '';
+  const bgerFallback = `https://search.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?lang=de&type=simple_query&query_words=${encodeURIComponent(e.nummer)}`;
+  let body = '';
+  if (open) {
+    const linkHtml = e.url
+      ? `<a href="${esc(e.url)}" target="_blank">🔗 opencaselaw.ch</a>`
+      : `<a href="${esc(bgerFallback)}" target="_blank" class="fallback">🔍 BGer-Suche</a>`;
+    body = `<div class="card-body">
+      ${e.kommentar ? `<div class="card-comment">${esc(e.kommentar)}</div>` : ''}
+      <div class="card-links">${linkHtml}<a href="https://opencaselaw.ch/search?q=${encodeURIComponent(e.nummer)}" target="_blank" class="fallback">Suche opencaselaw</a></div>
+      ${e.datum ? `<div class="card-date">${esc(e.datum)}</div>` : ''}
+    </div>`;
+  }
+  return `<div class="card">
+    <div class="card-header" onclick="toggleCard('${e.id}')">
+      <span class="card-arrow ${open?'open':''}">▶</span>
+      <span class="card-num">${esc(e.nummer)}</span>
+      ${linked}${tags}${kat}
+      <div class="card-actions" onclick="event.stopPropagation()">
+        <button class="card-btn" onclick="openEdit('${e.id}')" aria-label="Bearbeiten">✏️</button>
+        <button class="card-btn del" onclick="openDelete('${e.id}')" aria-label="Löschen">🗑️</button>
+      </div>
+    </div>
+    ${body}
+  </div>`;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Interactions ──────────────────────────────────────────────────────────────
+function toggleGroup(id) { expanded[id] = !expanded[id]; render(); }
+function toggleCard(id) { expandedCards[id] = !expandedCards[id]; render(); }
+
+function switchTab(t) {
+  currentTab = t;
+  document.getElementById('tab-browse').className = 'tab' + (t==='browse'?' active':'');
+  document.getElementById('tab-search').className = 'tab' + (t==='search'?' active':'');
+  render();
+}
+
+function onSearch(v) {
+  searchQ = v.trim().toLowerCase();
+  if (searchQ.length >= 2) switchTab('search');
+  else { switchTab('browse'); }
+}
+
+// ── Edit ──────────────────────────────────────────────────────────────────────
+function buildSelect() {
+  let html = '<option value="">— Rechtsgebiet wählen —</option>';
+  SR.forEach(g => {
+    html += `<optgroup label="${esc(g.label)}">`;
+    g.sub.forEach(s => { html += `<option value="${s.id}">${esc(s.label)}</option>`; });
+    html += '</optgroup>';
+  });
+  document.getElementById('f-kategorie').innerHTML = html;
+}
+
+function openAdd(katId) {
+  editingId = 'new';
+  document.getElementById('editTitle').textContent = 'Neuer Entscheid';
+  buildSelect();
+  document.getElementById('f-nummer').value = '';
+  document.getElementById('f-kategorie').value = katId || '';
+  document.getElementById('f-tags').value = '';
+  document.getElementById('f-datum').value = '';
+  document.getElementById('f-url').value = '';
+  document.getElementById('f-kommentar').value = '';
+  updateSaveBtn(); updateLinkPreview();
+  document.getElementById('editOverlay').style.display='flex';
+}
+
+function openEdit(id) {
+  const e = data.find(x => x.id === id); if (!e) return;
+  editingId = id;
+  document.getElementById('editTitle').textContent = 'Entscheid bearbeiten';
+  buildSelect();
+  document.getElementById('f-nummer').value = e.nummer;
+  document.getElementById('f-kategorie').value = e.kategorie;
+  document.getElementById('f-tags').value = (e.tags||[]).join(', ');
+  document.getElementById('f-datum').value = e.datum || '';
+  document.getElementById('f-url').value = e.url || '';
+  document.getElementById('f-kommentar').value = e.kommentar || '';
+  updateSaveBtn(); updateLinkPreview();
+  document.getElementById('editOverlay').classList.remove('hidden');
+}
+
+function closeEdit() { document.getElementById('editOverlay').style.display='none'; }
+function closeEditIfBg(ev) { if (ev.target === document.getElementById('editOverlay')) closeEdit(); }
+
+function updateSaveBtn() {
+  const ok = document.getElementById('f-nummer').value.trim() && document.getElementById('f-kategorie').value;
+  document.getElementById('saveBtn').disabled = !ok;
+}
+function updateLinkPreview() {
+  const u = document.getElementById('f-url').value.trim();
+  document.getElementById('linkPreview').textContent = u ? '✓ gesetzt' : '';
+}
+
+function doLookup() {
+  const num = document.getElementById('f-nummer').value.trim();
+  if (!num) return;
+  // Format: 4A_648/2024 → bger_4a_648_2024 for opencaselaw
+  const m = num.match(/^(\d[A-Z]{1,2})_(\d+)\/(\d{4})$/i);
+  if (m) {
+    const url = `https://mcp.opencaselaw.ch/entscheid/bger_${m[1].toLowerCase()}_${m[2]}_${m[3]}`;
+    document.getElementById('f-url').value = url;
+    updateLinkPreview();
+    showToast('Link gesetzt ✓');
+  } else if (num.match(/^BGE\s+\d+/i)) {
+    const clean = num.replace(/\s+/g,'_').toLowerCase();
+    document.getElementById('f-url').value = `https://mcp.opencaselaw.ch/entscheid/${clean}`;
+    updateLinkPreview();
+    showToast('Link gesetzt ✓');
+  } else {
+    window.open(`https://search.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?lang=de&type=simple_query&query_words=${encodeURIComponent(num)}`, '_blank');
+    showToast('Suche auf BGer geöffnet');
+  }
+}
+
+function saveEntry() {
+  const num = document.getElementById('f-nummer').value.trim();
+  const kat = document.getElementById('f-kategorie').value;
+  if (!num || !kat) return;
+  const entry = {
+    id: editingId === 'new' ? 'e' + Date.now() : editingId,
+    nummer: num,
+    kategorie: kat,
+    tags: document.getElementById('f-tags').value.split(',').map(t=>t.trim()).filter(Boolean).slice(0,2),
+    datum: document.getElementById('f-datum').value.trim(),
+    url: document.getElementById('f-url').value.trim(),
+    kommentar: document.getElementById('f-kommentar').value.trim(),
+  };
+  if (editingId === 'new') data.push(entry);
+  else { const i = data.findIndex(x=>x.id===editingId); if (i>=0) data[i]=entry; }
+  saveData(); closeEdit(); render();
+  showToast(editingId==='new' ? 'Entscheid hinzugefügt' : 'Gespeichert');
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+function openDelete(id) {
+  deleteId = id;
+  const e = data.find(x=>x.id===id);
+  document.getElementById('delText').textContent = `„${e?.nummer}" wirklich löschen?`;
+  document.getElementById('delOverlay').style.display='flex';
+}
+function closeDelete() { document.getElementById('delOverlay').style.display='none'; deleteId=null; }
+function confirmDelete() {
+  data = data.filter(x=>x.id!==deleteId);
+  saveData(); closeDelete(); render(); showToast('Gelöscht');
+}
+
+// ── Migration ─────────────────────────────────────────────────────────────────
+function runMigration() {
+  data = data.map(e => ({...e, kategorie: KAT_MIGRATION[e.kategorie] || e.kategorie}));
+  migrationPending = false; saveData(); render(); showToast('Migration abgeschlossen');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg, warn) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadData();
+render();
+</script>
+</body>
+</html>
